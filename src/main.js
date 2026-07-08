@@ -15,9 +15,11 @@ import {
   createIcons,
 } from "lucide";
 import "./styles.css";
+import { supabase } from "./supabaseClient";
 
 const games = [
   {
+    slug: "neon-rush-2099",
     title: "Neon Rush 2099",
     genre: "레이싱",
     tag: "신규",
@@ -29,6 +31,7 @@ const games = [
     accent: "pink",
   },
   {
+    slug: "ashen-kingdom",
     title: "Ashen Kingdom",
     genre: "RPG",
     tag: "인기",
@@ -40,6 +43,7 @@ const games = [
     accent: "amber",
   },
   {
+    slug: "orbit-garden",
     title: "Orbit Garden",
     genre: "시뮬레이션",
     tag: "힐링",
@@ -51,6 +55,7 @@ const games = [
     accent: "green",
   },
   {
+    slug: "abyss-command",
     title: "Abyss Command",
     genre: "전략",
     tag: "추천",
@@ -62,6 +67,7 @@ const games = [
     accent: "cyan",
   },
   {
+    slug: "iron-sunset",
     title: "Iron Sunset",
     genre: "액션",
     tag: "특가",
@@ -73,6 +79,7 @@ const games = [
     accent: "orange",
   },
   {
+    slug: "violet-noir",
     title: "Violet Noir",
     genre: "어드벤처",
     tag: "스토리",
@@ -84,6 +91,8 @@ const games = [
     accent: "violet",
   },
 ];
+
+const likeCounts = new Map(games.map((game) => [game.slug, 0]));
 
 const genres = ["전체", "액션", "RPG", "전략", "레이싱", "시뮬레이션", "어드벤처"];
 
@@ -273,6 +282,10 @@ function renderGames() {
               <del>${game.oldPrice}</del>
             </div>
           </div>
+          <button class="like-button" type="button" data-like="${game.slug}" aria-label="${game.title} 좋아요">
+            <i data-lucide="heart"></i>
+            <span class="like-count">${likeCounts.get(game.slug)}</span>
+          </button>
         </article>
       `,
     )
@@ -281,7 +294,49 @@ function renderGames() {
   if (!visible.length) {
     grid.innerHTML = `<p class="empty-state">검색 결과가 없습니다.</p>`;
   }
-  createIcons({ icons: { Star } });
+  createIcons({ icons: { Star, Heart } });
+
+  grid.querySelectorAll("[data-like]").forEach((button) => {
+    button.addEventListener("click", () => likeGame(button.dataset.like));
+  });
+}
+
+async function likeGame(slug) {
+  if (!supabase) {
+    likeCounts.set(slug, likeCounts.get(slug) + 1);
+    renderGames();
+    return;
+  }
+
+  const { error } = await supabase.rpc("increment_game_like", { game_slug: slug });
+  if (error) {
+    console.error("좋아요 반영 실패:", error.message);
+  }
+}
+
+function applyLikeRow(row) {
+  likeCounts.set(row.slug, row.likes);
+  renderGames();
+}
+
+async function initLikes() {
+  if (!supabase) return;
+
+  const { data, error } = await supabase.from("game_likes").select("slug, likes");
+  if (error) {
+    console.error("좋아요 초기 로드 실패:", error.message);
+  } else {
+    data.forEach(applyLikeRow);
+  }
+
+  supabase
+    .channel("game_likes_changes")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "game_likes" },
+      (payload) => applyLikeRow(payload.new),
+    )
+    .subscribe();
 }
 
 filterButtons.forEach((button) => {
@@ -329,3 +384,4 @@ createIcons({
   },
 });
 renderGames();
+initLikes();
