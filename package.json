@@ -1,5 +1,5 @@
 {
-  "name": "steam-like-storefront",
+  "name": "snake-arena",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,6 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "lucide": "^0.468.0",
     "@supabase/supabase-js": "^2.45.4"
   },
   "devDependencies": {
