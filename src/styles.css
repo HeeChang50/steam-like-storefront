@@ -348,9 +348,133 @@ h1 {
 
 .toolbar-band,
 .catalog-section,
-.queue-band {
+.queue-band,
+.click-battle {
   position: relative;
   padding: 34px clamp(18px, 4vw, 64px);
+}
+
+.click-battle {
+  border-top: 1px solid var(--line);
+  background: linear-gradient(160deg, rgba(68, 216, 255, 0.06), transparent 60%);
+}
+
+.click-battle-desc {
+  max-width: 360px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.click-battle-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+  align-items: start;
+}
+
+.nickname-gate {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  max-width: 420px;
+}
+
+.nickname-gate input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+.click-battle-score {
+  margin-bottom: 14px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.click-battle-score strong {
+  color: var(--mint);
+  font-size: 20px;
+}
+
+.mole-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 420px;
+}
+
+.mole-hole {
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  transition:
+    background 120ms ease,
+    transform 100ms ease;
+}
+
+.mole-hole.active {
+  background: var(--rose);
+  box-shadow: 0 0 24px rgba(255, 91, 138, 0.6);
+  transform: scale(0.95);
+}
+
+.leaderboard {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.leaderboard h3 {
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  counter-reset: rank;
+}
+
+.leaderboard-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  font-size: 13px;
+}
+
+.leaderboard-list li::before {
+  counter-increment: rank;
+  content: counter(rank);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.leaderboard-list li strong {
+  margin-left: auto;
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .click-battle-body {
+    grid-template-columns: 1fr;
+  }
 }
 
 .toolbar-band {

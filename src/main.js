@@ -112,6 +112,7 @@ app.innerHTML = `
       <a href="#deals">특가</a>
       <a href="#queue">추천 큐</a>
       <a href="#library">라이브러리</a>
+      <a href="#click-battle">클릭배틀</a>
     </nav>
     <form class="search" role="search">
       <i data-lucide="search"></i>
@@ -141,6 +142,7 @@ app.innerHTML = `
     <a href="#deals">특가</a>
     <a href="#queue">추천 큐</a>
     <a href="#library">라이브러리</a>
+    <a href="#click-battle">클릭배틀</a>
   </div>
 
   <main>
@@ -244,6 +246,36 @@ app.innerHTML = `
             `,
           )
           .join("")}
+      </div>
+    </section>
+
+    <section class="click-battle" id="click-battle">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">라이브 이벤트</p>
+          <h2>클릭 배틀</h2>
+        </div>
+        <p class="click-battle-desc">두더지가 빛나는 순간에 클릭! 우리 반 실시간 랭킹에 도전하세요.</p>
+      </div>
+      <div class="click-battle-body">
+        <div class="nickname-gate" id="nicknameGate">
+          <input id="nicknameInput" type="text" maxlength="12" placeholder="닉네임 입력 (예: 두더지킬러)" />
+          <button class="primary-button" type="button" id="nicknameSubmit">참가하기</button>
+        </div>
+        <div class="click-battle-play" id="clickBattlePlay" hidden>
+          <div class="click-battle-score">
+            <span id="playerNickname"></span>님의 점수 <strong id="myScore">0</strong>
+          </div>
+          <div class="mole-grid" id="moleGrid" aria-label="두더지 클릭판">
+            ${Array.from({ length: 9 })
+              .map((_, index) => `<button class="mole-hole" type="button" data-hole="${index}"></button>`)
+              .join("")}
+          </div>
+        </div>
+        <div class="leaderboard">
+          <h3>실시간 TOP 10</h3>
+          <ol id="leaderboardList" class="leaderboard-list"></ol>
+        </div>
       </div>
     </section>
   </main>
@@ -385,3 +417,108 @@ createIcons({
 });
 renderGames();
 initLikes();
+initClickBattle();
+
+const NICKNAME_KEY = "nebula_click_battle_nickname";
+
+function initClickBattle() {
+  const nicknameGate = document.querySelector("#nicknameGate");
+  const nicknameInput = document.querySelector("#nicknameInput");
+  const nicknameSubmit = document.querySelector("#nicknameSubmit");
+  const play = document.querySelector("#clickBattlePlay");
+  const playerNicknameEl = document.querySelector("#playerNickname");
+  const myScoreEl = document.querySelector("#myScore");
+  const moleGrid = document.querySelector("#moleGrid");
+  const holes = moleGrid.querySelectorAll(".mole-hole");
+  const leaderboardList = document.querySelector("#leaderboardList");
+
+  let nickname = localStorage.getItem(NICKNAME_KEY);
+  let myScore = 0;
+  let activeHole = null;
+
+  function startPlaying(name) {
+    nickname = name;
+    localStorage.setItem(NICKNAME_KEY, nickname);
+    nicknameGate.hidden = true;
+    play.hidden = false;
+    playerNicknameEl.textContent = nickname;
+    startMoleLoop();
+    fetchMyScore();
+  }
+
+  nicknameSubmit.addEventListener("click", () => {
+    const value = nicknameInput.value.trim();
+    if (value) startPlaying(value);
+  });
+  nicknameInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") nicknameSubmit.click();
+  });
+
+  function startMoleLoop() {
+    setInterval(() => {
+      holes.forEach((hole) => hole.classList.remove("active"));
+      activeHole = holes[Math.floor(Math.random() * holes.length)];
+      activeHole.classList.add("active");
+    }, 650);
+  }
+
+  holes.forEach((hole) => {
+    hole.addEventListener("click", () => {
+      if (hole !== activeHole || !hole.classList.contains("active")) return;
+      hole.classList.remove("active");
+      activeHole = null;
+      myScore += 1;
+      myScoreEl.textContent = myScore;
+      registerHit(nickname);
+    });
+  });
+
+  async function registerHit(name) {
+    if (!supabase) return;
+    const { error } = await supabase.rpc("increment_click_score", { player_nickname: name });
+    if (error) console.error("클릭 점수 반영 실패:", error.message);
+  }
+
+  async function fetchMyScore() {
+    if (!supabase || !nickname) return;
+    const { data, error } = await supabase
+      .from("click_battle_scores")
+      .select("score")
+      .eq("nickname", nickname)
+      .maybeSingle();
+    if (!error && data) {
+      myScore = data.score;
+      myScoreEl.textContent = myScore;
+    }
+  }
+
+  async function refreshLeaderboard() {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("click_battle_scores")
+      .select("nickname, score")
+      .order("score", { ascending: false })
+      .limit(10);
+    if (error) {
+      console.error("리더보드 로드 실패:", error.message);
+      return;
+    }
+    leaderboardList.innerHTML = data
+      .map((row) => `<li><span>${row.nickname}</span><strong>${row.score}</strong></li>`)
+      .join("");
+  }
+
+  if (supabase) {
+    refreshLeaderboard();
+    supabase
+      .channel("click_battle_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "click_battle_scores" },
+        () => refreshLeaderboard(),
+      )
+      .subscribe();
+  }
+
+  if (nickname) startPlaying(nickname);
+}
